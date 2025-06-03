@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "538716459199",
+    "project_id": "fp-ppb-ec369",
+    "storage_bucket": "fp-ppb-ec369.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:538716459199:android:8c4e650b6d9f270c89f60a",
+        "android_client_info": {
+          "package_name": "com.example.financial_management_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZeY0Y2kQfP0dDYnN00pm8D7-bzsJywI4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
