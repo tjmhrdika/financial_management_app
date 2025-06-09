@@ -1,4 +1,4 @@
-import 'package:financial_management_app/services/FirestoreService.dart';
+import 'package:financial_management_app/services/firestore_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
