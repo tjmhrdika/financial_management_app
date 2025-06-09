@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:financial_management_app/services/firestore_service.dart';
+import 'package:financial_management_app/models/users.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,36 +21,93 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void navigateRegister() {
     if (!context.mounted) return;
-    Navigator.pushReplacementNamed(context, 'register');
+    Navigator.pushReplacementNamed(context, '/register');
   }
 
   void navigateHome() {
     if (!context.mounted) return;
-    Navigator.pushReplacementNamed(context, 'home');
+    Navigator.pushReplacementNamed(context, '/home');
   }
 
   void signIn() async {
+  if (_emailController.text.trim().isEmpty) {
     setState(() {
-      _isLoading = true;
-      _errorCode = "";
+      _errorCode = "Please enter your email";
     });
+    return;
+  }
 
-    try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
-      navigateHome();
-    } on FirebaseAuthException catch (e) {
-      setState(() {
-        _errorCode = e.code;
-      });
-    }
-
+  if (_passwordController.text.isEmpty) {
     setState(() {
-      _isLoading = false;
+      _errorCode = "Please enter your password";
+    });
+    return;
+  }
+
+  setState(() {
+    _isLoading = true;
+    _errorCode = "";
+  });
+
+  try {
+    UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
+
+    final User? user = userCredential.user;
+    if (user != null) {
+      UserModel? userProfile = await FirestoreService.getUserProfile(user.uid);
+      
+      if (userProfile != null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Welcome back, ${userProfile.username}!'),
+              backgroundColor: const Color(0xFFB8A7E8),
+            ),
+          );
+          navigateHome();
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Account found, but profile incomplete.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+
+          navigateHome();
+        }
+      }
+    }
+  } on FirebaseAuthException catch (e) {
+    setState(() {
+      switch (e.code) {
+        case 'user-not-found':
+          _errorCode = 'No user found for that email';
+          break;
+        case 'wrong-password':
+          _errorCode = 'Wrong password provided';
+          break;
+        case 'invalid-email':
+          _errorCode = 'Invalid email address';
+          break;
+        default:
+          _errorCode = e.message ?? 'Login failed';
+      }
+    });
+  } catch (e) {
+    setState(() {
+      _errorCode = 'Something went wrong. Please try again.';
     });
   }
+
+  setState(() {
+    _isLoading = false;
+  });
+}
 
 void showResetPasswordDialog() {
   if (!mounted) return;
