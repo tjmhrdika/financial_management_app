@@ -1,4 +1,5 @@
 import 'package:financial_management_app/services/firestore_service.dart';
+import 'package:financial_management_app/models/users.dart'; 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -23,57 +24,59 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void navigateLogin() {
     if (!context.mounted) return;
-    Navigator.pushReplacementNamed(context, 'login');
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   void navigateHome() {
     if (!context.mounted) return;
-    Navigator.pushReplacementNamed(context, 'home');
+    Navigator.pushReplacementNamed(context, '/home');
   }
 
   void register() async {
-    if (_passwordController.text != _retryPasswordController.text) {
+    if (_usernameController.text.trim().isEmpty) {
       setState(() {
-        _errorCode = "Passwords don't match";
+        _errorCode = "Please enter a username";
       });
       return;
     }
 
-    if (!_agreeToTerms) {
+    bool usernameExists = await FirestoreService.usernameExists(_usernameController.text.trim());
+    if (usernameExists) {
       setState(() {
-        _errorCode = "Please agree to Terms and Conditions";
+        _errorCode = "Username already exists. Please choose another.";
       });
       return;
     }
-
-    setState(() {
-      _isLoading = true;
-      _errorCode = "";
-    });
-
-    try {
-      final UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text,
+    final UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
         password: _passwordController.text,
-      );
-      final User? user = userCredential.user;
-      if (user != null){
-        await Firestoreservice().createUserProfile(
-          user.uid, 
-          _usernameController.text.trim(),
-          _emailController.text.trim(),
-        );
-      }
-      navigateLogin();
-    } on FirebaseAuthException catch (e) {
+    );
+    if (userCredential.user == null) {
       setState(() {
-        _errorCode = e.code;
+        _errorCode = "Failed to create user account. Please try again.";
       });
+      return;
     }
 
-    setState(() {
-      _isLoading = false;
-    });
+    final User user = userCredential.user!;
+
+   
+    final UserModel userModel = UserModel(
+          uid: user.uid,
+          username: _usernameController.text.trim(),
+          email: _emailController.text.trim(),
+    );
+    
+    
+    await FirestoreService.createUserProfile(userModel);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Welcome ${userModel.username}! Account created successfully.'),
+        backgroundColor: const Color(0xFFB8A7E8),
+      ),
+    );
+    navigateLogin();
   }
 
   @override
@@ -106,7 +109,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              // Subtitle
               const Text(
                 'Create an account so you can manage your\nmoney now !',
                 style: TextStyle(
@@ -118,13 +120,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 32),
               
-              // Form Fields
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Username Field
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -179,7 +179,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 24),
                       
-                      // Email Field
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -238,7 +237,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 24),
                       
-                      // Password Field
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -305,7 +303,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 24),
                       
-                      // Retry Password Field
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -372,7 +369,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 24),
                       
-                      // Terms and Conditions Checkbox
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

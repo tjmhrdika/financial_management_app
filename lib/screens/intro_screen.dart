@@ -76,7 +76,7 @@ class _IntroScreenState extends State<IntroScreen> {
                         curve: Curves.easeIn,
                       );
                     } else {
-                      Navigator.pushReplacementNamed(context, 'login');
+                      Navigator.pushReplacementNamed(context, '/login');
                     }
                   },
                   child: Text(

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import '../widgets/expense_list.dart';
-import '../widgets/add_expense_form.dart';
-import '../screens/logout_screen.dart';
+import 'package:financial_management_app/widgets/navigation_bar.dart';
+import 'package:financial_management_app/screens/user_profile_screen.dart';
+import 'package:financial_management_app/screens/statistics_screen.dart';
+import 'package:financial_management_app/screens/home_dashboard_screen.dart';
+import 'package:financial_management_app/widgets/add_expense_form.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -11,36 +14,31 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
+    const HomeDashboardScreen(),
     const ExpenseList(),
     const AddExpenseForm(),
-    const LogoutScreen(),
+    const StatisticsScreen(),
+    const ProfileScreen(),
   ];
+
+  void _onNavItemTapped(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: _screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: NavBar(
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.text_snippet),
-            label: 'Expenses',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add),
-            label: 'Add',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
+        onTap: _onNavItemTapped,
       ),
     );
   }
