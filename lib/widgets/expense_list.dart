@@ -39,7 +39,7 @@ class _ExpenseListState extends State<ExpenseList> {
     final incomeRef = FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
-        .collection('income')
+        .collection('incomes')
         .orderBy('date', descending: true);
 
     return expensesRef.snapshots().asyncMap((expenseSnap) async {
@@ -131,7 +131,7 @@ class _ExpenseListState extends State<ExpenseList> {
     final incomeRef = FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
-        .collection('income')
+        .collection('incomes')
         .orderBy('date', descending: true);
 
     final categoriesRef = FirebaseFirestore.instance
@@ -156,6 +156,112 @@ class _ExpenseListState extends State<ExpenseList> {
         };
       }).toList();
     });
+  }
+
+  void _showUpdateDialog(BuildContext context, Expense expense, bool isIncome) {
+    final _descriptionController = TextEditingController(text: expense.description);
+    final _amountController = TextEditingController(text: expense.amount.toString());
+    String? _selectedCategoryId = expense.categoryId;
+    DateTime _selectedDate = expense.date;
+    final user = FirebaseAuth.instance.currentUser;
+    final type = isIncome ? 'Income' : 'Expense';
+    final collection = isIncome ? 'incomes' : 'expenses';
+    final collectionCategories = isIncome ? 'incomeCategories' : 'expenseCategories';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: Text('Update $type'),
+          content: FutureBuilder(
+            future: FirebaseFirestore.instance
+                .collection('users')
+                .doc(user!.uid)
+                .collection(collectionCategories)
+                .get(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const CircularProgressIndicator();
+              }
+              final categories = snapshot.data!.docs
+                  .map((doc) => ExpenseCategory.fromDoc(doc))
+                  .toList();
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: _descriptionController,
+                    decoration: const InputDecoration(labelText: 'Description'),
+                  ),
+                  TextFormField(
+                    controller: _amountController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Amount (Rp)'),
+                    validator: (val) {
+                      if (val == null || val.isEmpty) return 'Required';
+                      final n = int.tryParse(val);
+                      return n == null || n < 0 ? 'Must be a non-negative number' : null;
+                    },
+                  ),
+                  DropdownButtonFormField<String>(
+                    value: _selectedCategoryId,
+                    items: categories.map((c) => DropdownMenuItem(
+                      value: c.id,
+                      child: Text(c.name),
+                    )).toList(),
+                    onChanged: (val) => setState(() => _selectedCategoryId = val),
+                    decoration: const InputDecoration(labelText: 'Category'),
+                  ),
+                  Row(
+                    children: [
+                      const Text('Date: '),
+                      TextButton(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _selectedDate,
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) {
+                            setState(() => _selectedDate = picked);
+                          }
+                        },
+                        child: Text('${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}'),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () async {
+                final amount = int.tryParse(_amountController.text);
+                if (_descriptionController.text.isEmpty ||
+                    amount == null || amount < 0 ||
+                    _selectedCategoryId == null) return;
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(user.uid)
+                    .collection(collection)
+                    .doc(expense.id)
+                    .update({
+                  'description': _descriptionController.text,
+                  'amount': amount,
+                  'categoryId': _selectedCategoryId,
+                  'date': Timestamp.fromDate(_selectedDate),
+                });
+                Navigator.pop(ctx);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -259,12 +365,48 @@ class _ExpenseListState extends State<ExpenseList> {
                                 : const Icon(Icons.category),
                             title: Text(transaction.description),
                             subtitle: Text(category?.name ?? 'No Category'),
-                            trailing: Text(
-                              '${amountPrefix}Rp${transaction.amount.toString()}',
-                              style: TextStyle(
-                                color: amountColor,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '${amountPrefix}Rp${transaction.amount.toString()}',
+                                  style: TextStyle(
+                                    color: amountColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.edit),
+                                  onPressed: () => _showUpdateDialog(context, transaction, isIncome),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete),
+                                  onPressed: () async {
+                                    final confirm = await showDialog(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: const Text('Confirm Deletion'),
+                                        content: const Text('Are you sure you want to delete this expense?'),
+                                        actions: [
+                                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                                          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+                                        ],
+                                      ),
+                                    );
+                                    if (confirm == true) {
+                                      final user = FirebaseAuth.instance.currentUser;
+                                      if (user != null) {
+                                        await FirebaseFirestore.instance
+                                            .collection('users')
+                                            .doc(user.uid)
+                                            .collection('expenses')
+                                            .doc(transaction.id)
+                                            .delete();
+                                      }
+                                    }
+                                  },
+                                ),
+                              ],
                             ),
                           ),
                         ),
