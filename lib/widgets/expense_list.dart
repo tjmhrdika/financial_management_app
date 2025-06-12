@@ -3,7 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/expense.dart';
 import '../models/expense_category.dart';
-import 'package:financial_management_app/screens/all_expenses_screen.dart';
+import '../models/savings_goal.dart';
+import '../services/savings_goal_service.dart';
+import '../services/income_allocation_service.dart';
+import '../utils/currency_formatter.dart';
 
 class ExpenseList extends StatefulWidget {
   final String initialFilter;
@@ -15,6 +18,9 @@ class ExpenseList extends StatefulWidget {
 
 class _ExpenseListState extends State<ExpenseList> {
   late String selectedFilter = widget.initialFilter;
+
+  final savingsService = SavingsGoalService();
+  final allocationService = IncomeAllocationService();
 
   Stream<List<Map<String, dynamic>>> _transactionStream() {
     final user = FirebaseAuth.instance.currentUser;
@@ -159,106 +165,415 @@ class _ExpenseListState extends State<ExpenseList> {
   }
 
   void _showUpdateDialog(BuildContext context, Expense expense, bool isIncome) {
-    final _descriptionController = TextEditingController(text: expense.description);
-    final _amountController = TextEditingController(text: expense.amount.toString());
-    String? _selectedCategoryId = expense.categoryId;
-    DateTime _selectedDate = expense.date;
+    final descController = TextEditingController(text: expense.description);
+    final amountController = TextEditingController(text: CurrencyFormatter.formatNumber(expense.amount));
+    String? selectedCategoryId = expense.categoryId;
+    DateTime selectedDate = expense.date;
     final user = FirebaseAuth.instance.currentUser;
-    final type = isIncome ? 'Income' : 'Expense';
-    final collection = isIncome ? 'incomes' : 'expenses';
-    final collectionCategories = isIncome ? 'incomeCategories' : 'expenseCategories';
+
+    List<SavingsGoal> savingsGoals = [];
+    Map<String, double> goalAllocations = {};
+    bool dataLoaded = false;
+
+    Future<Map<String, dynamic>> loadDialogData(User user, bool isIncome, String expenseId) async {
+      final collectionName = isIncome ? 'incomeCategories' : 'expenseCategories';
+      final categoryDocs = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection(collectionName)
+          .get();
+      
+      final categories = categoryDocs.docs.map((doc) => ExpenseCategory.fromDoc(doc)).toList();
+
+      Map<String, dynamic> result = {'categories': categories};
+
+      if (isIncome) {
+        try {
+          final goals = await savingsService.fetchActiveSavingsGoals();
+          final allocations = await allocationService.getIncomeAllocations(expenseId);
+          
+          result['savingsGoals'] = goals;
+          result['allocations'] = allocations;
+        } catch (e) {
+          result['savingsGoals'] = [];
+          result['allocations'] = {};
+        }
+      }
+
+      return result;
+    }
+
+    Future<void> saveTransaction(
+      User user,
+      Expense expense,
+      bool isIncome,
+      TextEditingController descController,
+      TextEditingController amountController,
+      String? selectedCategoryId,
+      DateTime selectedDate,
+      Map<String, double> goalAllocations,
+    ) async {
+      final amount = int.tryParse(amountController.text);
+      if (descController.text.isEmpty || amount == null || amount < 0 || selectedCategoryId == null) {
+        return;
+      }
+
+      if (isIncome && goalAllocations.isNotEmpty) {
+        final totalAllocated = goalAllocations.values.fold(0.0, (sum, amount) => sum + amount);
+        if (totalAllocated > amount) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Allocations exceed income amount'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+
+      try {
+        final collection = isIncome ? 'incomes' : 'expenses';
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection(collection)
+            .doc(expense.id)
+            .update({
+          'description': descController.text,
+          'amount': amount,
+          'categoryId': selectedCategoryId,
+          'date': Timestamp.fromDate(selectedDate),
+        });
+
+        if (isIncome) {
+          if (goalAllocations.isNotEmpty) {
+            await savingsService.updateMultipleGoalAllocations(goalAllocations);
+            await allocationService.updateAllocations(expense.id, goalAllocations);
+          } else {
+            await allocationService.deleteIncomeAllocations(expense.id);
+          }
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
-          title: Text('Update $type'),
-          content: FutureBuilder(
-            future: FirebaseFirestore.instance
-                .collection('users')
-                .doc(user!.uid)
-                .collection(collectionCategories)
-                .get(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const CircularProgressIndicator();
-              }
-              final categories = snapshot.data!.docs
-                  .map((doc) => ExpenseCategory.fromDoc(doc))
-                  .toList();
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: _descriptionController,
-                    decoration: const InputDecoration(labelText: 'Description'),
+        builder: (ctx, setDialogState) => Dialog(
+          insetPadding: EdgeInsets.all(16),
+          child: Container(
+            width: double.infinity,
+            height: MediaQuery.of(context).size.height * 0.85,
+            child: Column(
+              children: [
+                // Header
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isIncome ? Colors.green[100] : Colors.red[100],
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      topRight: Radius.circular(12),
+                    ),
                   ),
-                  TextFormField(
-                    controller: _amountController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Amount (Rp)'),
-                    validator: (val) {
-                      if (val == null || val.isEmpty) return 'Required';
-                      final n = int.tryParse(val);
-                      return n == null || n < 0 ? 'Must be a non-negative number' : null;
-                    },
-                  ),
-                  DropdownButtonFormField<String>(
-                    value: _selectedCategoryId,
-                    items: categories.map((c) => DropdownMenuItem(
-                      value: c.id,
-                      child: Text(c.name),
-                    )).toList(),
-                    onChanged: (val) => setState(() => _selectedCategoryId = val),
-                    decoration: const InputDecoration(labelText: 'Category'),
-                  ),
-                  Row(
+                  child: Row(
                     children: [
-                      const Text('Date: '),
-                      TextButton(
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: _selectedDate,
-                            firstDate: DateTime(2000),
-                            lastDate: DateTime.now(),
-                          );
-                          if (picked != null) {
-                            setState(() => _selectedDate = picked);
-                          }
-                        },
-                        child: Text('${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}'),
+                      Text(
+                        isIncome ? 'Edit Income' : 'Edit Expense',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      Spacer(),
+                      IconButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: Icon(Icons.close),
                       ),
                     ],
                   ),
-                ],
-              );
-            },
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            TextButton(
-              onPressed: () async {
-                final amount = int.tryParse(_amountController.text);
-                if (_descriptionController.text.isEmpty ||
-                    amount == null || amount < 0 ||
-                    _selectedCategoryId == null) return;
-                await FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(user.uid)
-                    .collection(collection)
-                    .doc(expense.id)
-                    .update({
-                  'description': _descriptionController.text,
-                  'amount': amount,
-                  'categoryId': _selectedCategoryId,
-                  'date': Timestamp.fromDate(_selectedDate),
-                });
-                Navigator.pop(ctx);
-              },
-              child: const Text('Save'),
+                ),
+                
+                // Scrollable content
+                Expanded(
+                  child: FutureBuilder(
+                    future: loadDialogData(user!, isIncome, expense.id),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) {
+                        return Center(child: CircularProgressIndicator());
+                      }
+                      
+                      final data = snapshot.data as Map<String, dynamic>;
+                      final categories = data['categories'];
+                      
+                      if (isIncome && !dataLoaded) {
+                        savingsGoals = data['savingsGoals'] ?? [];
+                        goalAllocations = data['allocations'] ?? {};
+                        dataLoaded = true;
+                      }
+                      
+                      return SingleChildScrollView(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Basic fields
+                            TextField(
+                              controller: descController,
+                              decoration: InputDecoration(
+                                labelText: 'Description',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            
+                            TextField(
+                              controller: amountController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: 'Amount (Rp)',
+                                border: OutlineInputBorder(),
+                              ),
+                              onChanged: (value) {
+                                final cleanValue = value.replaceAll(',', '');
+                                final amount = int.tryParse(cleanValue);
+                                if (amount != null && amount > 0) {
+                                  final formatted = CurrencyFormatter.formatNumber(amount);
+                                  if (amountController.text != formatted) {
+                                    amountController.text = formatted;
+                                    amountController.selection = TextSelection.fromPosition(
+                                      TextPosition(offset: amountController.text.length),
+                                    );
+                                  }
+                                }
+                              },
+                            ),
+                            SizedBox(height: 16),
+                            
+                            DropdownButtonFormField<String>(
+                              value: selectedCategoryId,
+                              decoration: InputDecoration(
+                                labelText: 'Category',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: categories.map<DropdownMenuItem<String>>((category) {
+                                return DropdownMenuItem<String>(
+                                  value: category.id,
+                                  child: Text(category.name),
+                                );
+                              }).toList(),
+                              onChanged: (val) => setDialogState(() => selectedCategoryId = val),
+                            ),
+                            SizedBox(height: 16),
+                            
+                            // Date picker
+                            InkWell(
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: selectedDate,
+                                  firstDate: DateTime(2000),
+                                  lastDate: DateTime.now(),
+                                );
+                                if (picked != null) {
+                                  setDialogState(() => selectedDate = picked);
+                                }
+                              },
+                              child: Container(
+                                padding: EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.calendar_today),
+                                    SizedBox(width: 12),
+                                    Text('${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            
+                            if (isIncome) ...[
+                              SizedBox(height: 24),
+                              Text(
+                                'Savings Allocations',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                              SizedBox(height: 16),
+                              
+                              if (savingsGoals.isEmpty)
+                                Container(
+                                  padding: EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[100],
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text('No savings goals available'),
+                                )
+                              else ...[
+                                Container(
+                                  padding: EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green[50],
+                                    border: Border.all(color: Colors.green[200]!),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text('Income: ${CurrencyFormatter.format(int.tryParse((amountController.text)))}'),
+                                      Text('Allocated: ${CurrencyFormatter.format(goalAllocations.values.fold(0.0, (sum, amount) => sum + amount).round())}'),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(height: 16),
+                                
+                                ...savingsGoals.map((goal) {
+                                  final controller = TextEditingController(
+                                    text: goalAllocations[goal.id]?.toString() ?? '',
+                                  );
+                                  
+                                  return Container(
+                                    margin: EdgeInsets.only(bottom: 12),
+                                    padding: EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Colors.grey[300]!),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          goal.name,
+                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                        ),
+                                        SizedBox(height: 12),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: TextField(
+                                                controller: controller,
+                                                keyboardType: TextInputType.number,
+                                                decoration: InputDecoration(
+                                                  hintText: '0',
+                                                  prefixText: 'Rp. ',
+                                                  border: OutlineInputBorder(),
+                                                ),
+                                                onChanged: (value) {
+                                                  final amount = double.tryParse(value) ?? 0;
+                                                  goalAllocations[goal.id] = amount;
+                                                  
+                                                  final totalIncome = double.tryParse(amountController.text) ?? 0;
+                                                  final totalAllocated = goalAllocations.values.fold(0.0, (sum, amount) => sum + amount);
+                                                  
+                                                  if (totalAllocated > totalIncome && totalIncome > 0) {
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text('Total allocation exceeds income!'),
+                                                        backgroundColor: Colors.orange,
+                                                        duration: Duration(seconds: 1),
+                                                      ),
+                                                    );
+                                                  }
+                                                  
+                                                  setDialogState(() {});
+                                                },
+                                              ),
+                                            ),
+                                            SizedBox(width: 12),
+                                            ElevatedButton(
+                                              onPressed: () {
+                                                final totalIncome = double.tryParse(amountController.text) ?? 0;
+                                                final currentAmount = goalAllocations[goal.id] ?? 0;
+                                                final otherAllocations = goalAllocations.values
+                                                    .where((allocation) => allocation != currentAmount)
+                                                    .fold(0.0, (sum, allocation) => sum + allocation);
+                                                final remaining = totalIncome - otherAllocations;
+                                                
+                                                if (remaining > 0) {
+                                                  controller.text = remaining.toString();
+                                                  goalAllocations[goal.id] = remaining;
+                                                  setDialogState(() {});
+                                                }
+                                              },
+                                              child: Text('All'),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ],
+                              
+                              SizedBox(height: 20),
+                            ],
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(12),
+                      bottomRight: Radius.circular(12),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: Text('Cancel'),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            await saveTransaction(
+                              user,
+                              expense,
+                              isIncome,
+                              descController,
+                              amountController,
+                              selectedCategoryId,
+                              selectedDate,
+                              goalAllocations,
+                            );
+                            Navigator.pop(ctx);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isIncome ? Colors.green : Colors.red,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: Text('Save'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -369,7 +684,7 @@ class _ExpenseListState extends State<ExpenseList> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  '${amountPrefix}Rp${transaction.amount.toString()}',
+                                  'Rp${transaction.amount.toString()}',
                                   style: TextStyle(
                                     color: amountColor,
                                     fontWeight: FontWeight.bold,

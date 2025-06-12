@@ -34,11 +34,9 @@ class TransactionService {
         .collection(collection)
         .get();
         
-    
     final expenses = snapshot.docs.map((doc) => Expense.fromDoc(doc)).toList();
 
 
-    
   Map<String, double> groupedSums = {};
     for (var expense in expenses) {
       groupedSums[expense.categoryId] =
