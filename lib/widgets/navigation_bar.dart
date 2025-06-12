@@ -118,7 +118,7 @@ class NavBar extends StatelessWidget{
               _buildNavItem(
                 icon: Icons.trending_up_outlined,
                 activeIcon: Icons.trending_up,
-                label: 'Statistics',
+                label: 'Budgeting',
                 index: 3,
                 isActive: currentIndex == 3,
               ),

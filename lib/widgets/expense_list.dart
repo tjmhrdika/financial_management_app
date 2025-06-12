@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/expense.dart';
 import '../models/expense_category.dart';
-import 'package:financial_management_app/screens/all_expenses_screen.dart';
 
 class ExpenseList extends StatefulWidget {
   final String initialFilter;
@@ -39,7 +38,7 @@ class _ExpenseListState extends State<ExpenseList> {
     final incomeRef = FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
-        .collection('income')
+        .collection('incomes')
         .orderBy('date', descending: true);
 
     return expensesRef.snapshots().asyncMap((expenseSnap) async {
@@ -131,7 +130,7 @@ class _ExpenseListState extends State<ExpenseList> {
     final incomeRef = FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
-        .collection('income')
+        .collection('incomes')
         .orderBy('date', descending: true);
 
     final categoriesRef = FirebaseFirestore.instance

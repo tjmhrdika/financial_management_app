@@ -8,7 +8,7 @@ class TransactionService {
 
   Future<List<Expense>> fetchLatestTransactions(String type) async {
     final user = FirebaseAuth.instance.currentUser;
-    String collection = (type == 'Income') ? 'income' : 'expenses';
+    String collection = (type == 'Income') ? 'incomes' : 'expenses';
     if (user == null) return [];
 
     QuerySnapshot snapshot = await _firestore
