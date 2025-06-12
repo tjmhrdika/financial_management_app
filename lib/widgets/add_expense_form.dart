@@ -221,6 +221,18 @@ class _AddExpenseFormState extends State<AddExpenseForm> {
                     backgroundColor: _isExpense ? Colors.red : Colors.green,
                   ),
                   onPressed: () async{
+                    if (_descriptionController.text.isEmpty ||
+                        _amountController.text.isEmpty ||
+                        _selectedCategoryId == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Please fill in all fields before submitting.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
                     await _submit();
 
                     String filterToPass = _isExpense ? 'Expenses' : 'Income';
