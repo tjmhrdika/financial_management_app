@@ -110,7 +110,7 @@ class NavBar extends StatelessWidget{
               _buildNavItem(
                 icon: Icons.receipt_long_outlined,
                 activeIcon: Icons.receipt_long,
-                label: 'Expenses',
+                label: 'Transactions',
                 index: 1,
                 isActive: currentIndex == 1,
               ),

@@ -24,7 +24,7 @@ class TransactionService {
 
   Future<List<Map<String, dynamic>>> fetchCategorySummaries(String type) async {
     final user = FirebaseAuth.instance.currentUser;
-    String collection = (type == 'Income') ? 'income' : 'expenses';
+    String collection = (type == 'Income') ? 'incomes' : 'expenses';
     String categoryCollection = (type == 'Income') ? 'incomeCategories' : 'expenseCategories';
     if (user == null) return [];
 
