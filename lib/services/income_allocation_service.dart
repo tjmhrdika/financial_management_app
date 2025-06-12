@@ -3,27 +3,27 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/incomeAllocation.dart';
 
 class IncomeAllocationService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final firestore = FirebaseFirestore.instance;
+  final auth = FirebaseAuth.instance;
 
-  CollectionReference<Map<String, dynamic>>? _getAllocationsCollection() {
-    final user = _auth.currentUser;
+  // Get the collection for current user
+  CollectionReference? getCollection() {
+    final user = auth.currentUser;
     if (user == null) return null;
     
-    return _firestore
+    return firestore
         .collection('users')
         .doc(user.uid)
         .collection('incomeAllocations');
   }
 
-  Future<void> saveAllocations(String incomeId, Map<String, double> goalAllocations) async {
-    final collection = _getAllocationsCollection();
-    if (collection == null) throw Exception('User not authenticated');
+  // Save new allocations
+  Future<void> saveAllocations(String incomeId, Map<String, double> allocations) async {
+    final collection = getCollection();
+    if (collection == null) return;
 
     try {
-      final batch = _firestore.batch();
-
-      for (final entry in goalAllocations.entries) {
+      for (final entry in allocations.entries) {
         if (entry.value > 0) {
           final allocation = IncomeAllocation(
             id: '', 
@@ -32,14 +32,97 @@ class IncomeAllocationService {
             amount: entry.value,
           );
 
-          final docRef = collection.doc();
-          batch.set(docRef, allocation.toMap());
+          await collection.add(allocation.toMap());
         }
       }
-
-      await batch.commit();
     } catch (e) {
-      throw Exception('Failed to save allocations: $e');
+      print('Error saving allocations: $e');
     }
+  }
+
+  // Get allocations for one income
+  Future<Map<String, double>> getIncomeAllocations(String incomeId) async {
+    final collection = getCollection();
+    if (collection == null) return {};
+
+    try {
+      final docs = await collection
+          .where('incomeId', isEqualTo: incomeId)
+          .get();
+
+      Map<String, double> result = {};
+      for (var doc in docs.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final targetId = data['targetId'] as String;
+        final amount = (data['amount'] as num).toDouble();
+        result[targetId] = amount;
+      }
+      
+      return result;
+    } catch (e) {
+      print('Error getting allocations: $e');
+      return {};
+    }
+  }
+
+  // Update allocations (delete old ones and add new ones)
+  Future<void> updateAllocations(String incomeId, Map<String, double> newAllocations) async {
+    final collection = getCollection();
+    if (collection == null) return;
+
+    try {
+      // Delete old allocations first
+      final oldDocs = await collection
+          .where('incomeId', isEqualTo: incomeId)
+          .get();
+
+      for (var doc in oldDocs.docs) {
+        await doc.reference.delete();
+      }
+
+      // Add new allocations
+      for (final entry in newAllocations.entries) {
+        if (entry.value > 0) {
+          final allocation = IncomeAllocation(
+            id: '', 
+            incomeId: incomeId,
+            targetId: entry.key, 
+            amount: entry.value,
+          );
+
+          await collection.add(allocation.toMap());
+        }
+      }
+    } catch (e) {
+      print('Error updating allocations: $e');
+    }
+  }
+
+  // Delete all allocations for one income
+  Future<void> deleteIncomeAllocations(String incomeId) async {
+    final collection = getCollection();
+    if (collection == null) return;
+
+    try {
+      final docs = await collection
+          .where('incomeId', isEqualTo: incomeId)
+          .get();
+
+      for (var doc in docs.docs) {
+        await doc.reference.delete();
+      }
+    } catch (e) {
+      print('Error deleting allocations: $e');
+    }
+  }
+
+  // Get total allocated amount for one income
+  Future<double> getTotalAllocated(String incomeId) async {
+    final allocations = await getIncomeAllocations(incomeId);
+    double total = 0;
+    for (double amount in allocations.values) {
+      total += amount;
+    }
+    return total;
   }
 }

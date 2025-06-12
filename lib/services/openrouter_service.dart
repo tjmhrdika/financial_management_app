@@ -4,7 +4,8 @@ import 'package:http/http.dart' as http;
 class OpenRouterService {
   static const String _baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
   // static const String _apiKey = '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'; 
-  static const String _apiKey = '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'; 
+  static const String _apiKey = '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';
+
   
   static const String _model = 'google/gemini-flash-1.5';
 
@@ -23,8 +24,6 @@ class OpenRouterService {
         headers: {
           'Authorization': 'Bearer $_apiKey',
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'http://localhost:8080', // For local development
-          'X-Title': 'Financial Management App',
         },
         body: jsonEncode({
           'model': _model,
@@ -58,12 +57,9 @@ class OpenRouterService {
 
   String _createSystemPrompt() {
     return '''
-You are a financial advisor AI. Your ONLY job is to create realistic savings goals and respond with JSON.
+You are a financial advisor AI. You must respond with ONLY valid JSON.
 
-CRITICAL: Your response must be ONLY a valid JSON object. No explanations, no markdown, no extra text.
-
-Respond with this EXACT format:
-
+IMPORTANT: Your response must be EXACTLY this JSON format with NO extra text:
 {
   "goals": [
     {
@@ -75,31 +71,32 @@ Respond with this EXACT format:
   "summary": "Brief explanation of the plan"
 }
 
-Requirements:
-1. Create 3-4 realistic goals
-2. Target amounts in Indonesian Rupiah (whole numbers only)
-3. Deadlines in YYYY-MM-DD format
-4. Goals should be achievable with their monthly savings
-5. Focus on the user request, with also including emergency fund and retirement fund
-6. Keep summary under 100 words
+Rules:
+1. ONLY return JSON - no explanations before/after
+2. Create 2-4 realistic goals
+3. Target amounts as integers (Indonesian Rupiah)
+4. Deadlines in YYYY-MM-DD format
+5. Include emergency fund + user's specific goals
+6. Summary under 80 words
 
-RESPOND ONLY WITH JSON - NO OTHER TEXT.
+RESPOND WITH ONLY THE JSON OBJECT - NOTHING ELSE.
+
 ''';
   }
 
-  String _createUserMessage(String userPrompt, double monthlyIncome, double monthlyExpenses, String today) {
+    String _createUserMessage(String userPrompt, double monthlyIncome, double monthlyExpenses, String today) {
     final monthlySavings = monthlyIncome - monthlyExpenses;
     
     return '''
-My money situation:
-- I earn Rp. ${monthlyIncome.toStringAsFixed(0)} per month
-- I spend Rp. ${monthlyExpenses.toStringAsFixed(0)} per month  
-- I can save Rp. ${monthlySavings.toStringAsFixed(0)} per month
-- Current Date: ${today}
+Financial situation:
+- Monthly income: Rp. ${monthlyIncome.toStringAsFixed(0)}
+- Monthly expenses: Rp. ${monthlyExpenses.toStringAsFixed(0)}  
+- Available to save: Rp. ${monthlySavings.toStringAsFixed(0)}
+- Today: $today
 
-My goals: $userPrompt
+User goals: $userPrompt
 
-Please make me a simple savings plan with realistic goals.
+Create a realistic savings plan.
 ''';
   }
 
@@ -111,13 +108,35 @@ Please make me a simple savings plan with realistic goals.
       }
       
       String jsonString = content.trim();
+      jsonString = jsonString.replaceAll(RegExp(r'```json\s*'), '');
+      jsonString = jsonString.replaceAll('```', '');
+      int firstBrace = jsonString.indexOf('{');
+      if (firstBrace >= 0) {
+        jsonString = jsonString.substring(firstBrace);
+      }
 
-      
+      int braceCount = 0;
+      int lastValidPosition = -1;
+    
+      for (int i = 0; i < jsonString.length; i++) {
+        if (jsonString[i] == '{') {
+          braceCount++;
+        } else if (jsonString[i] == '}') {
+          braceCount--;
+          if (braceCount == 0) {
+            lastValidPosition = i;
+            break;
+          }
+        }
+      }
+    
+      if (lastValidPosition > 0) {
+        jsonString = jsonString.substring(0, lastValidPosition + 1);
+      }
 
       
       final parsed = jsonDecode(jsonString);
       
-      // Validate the structure
       if (parsed is Map<String, dynamic> && 
           parsed.containsKey('goals') && 
           parsed['goals'] is List) {
@@ -129,8 +148,6 @@ Please make me a simple savings plan with realistic goals.
       return _getFallbackResponse();
     }
   }
-
-  // Fallback response when AI fails
   Map<String, dynamic> _getFallbackResponse() {
     return {
       "goals": [
@@ -152,32 +169,5 @@ Please make me a simple savings plan with realistic goals.
       ],
       "summary": "A basic savings plan with emergency fund, investments, and retirement planning. Adjust amounts based on your specific financial situation."
     };
-  }
-
-  // Test method to check if API key is working
-  Future<bool> testConnection() async {
-    try {
-      final response = await http.post(
-        Uri.parse(_baseUrl),
-        headers: {
-          'Authorization': 'Bearer $_apiKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'model': _model,
-          'messages': [
-            {
-              'role': 'user',
-              'content': 'Hello, respond with just "API Working"'
-            }
-          ],
-          'max_tokens': 10,
-        }),
-      );
-
-      return response.statusCode == 200;
-    } catch (e) {
-      return false;
-    }
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/savings_goal.dart';
 import '../services/savings_goal_service.dart';
 import 'package:financial_management_app/screens/ai_budgeting_screen.dart'; 
+import '../utils/currency_formatter.dart';
 
 class SavingsGoalsScreen extends StatefulWidget {
   const SavingsGoalsScreen({super.key});
@@ -39,7 +40,7 @@ class _SavingsGoalsScreenState extends State<SavingsGoalsScreen> {
   Future<void> _showAddEditDialog({SavingsGoal? goal}) async {
     final nameController = TextEditingController(text: goal?.name);
     final targetController = TextEditingController(
-      text: goal?.targetAmount.toString(),
+      text:  goal != null ? CurrencyFormatter.formatNumber(goal.targetAmount.toInt()) : '',
     );
     final currentController = TextEditingController(
       text: goal?.currentAmount.toString() ?? '0',
@@ -111,6 +112,19 @@ class _SavingsGoalsScreenState extends State<SavingsGoalsScreen> {
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.all(16),
                       ),
+                      onChanged: (value) {
+                        final cleanValue = value.replaceAll(',', '');
+                        final amount = int.tryParse(cleanValue);
+                        if (amount != null && amount > 0) {
+                          final formatted = CurrencyFormatter.formatNumber(amount);
+                          if (targetController.text != formatted) {
+                            targetController.text = formatted;
+                            targetController.selection = TextSelection.fromPosition(
+                              TextPosition(offset: targetController.text.length),
+                            );
+                          }
+                        }
+                      },
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -189,7 +203,7 @@ class _SavingsGoalsScreenState extends State<SavingsGoalsScreen> {
                             await _saveGoal(
                               goal: goal,
                               name: nameController.text.trim(),
-                              targetAmount: double.tryParse(targetController.text) ?? 0,
+                              targetAmount: double.tryParse(targetController.text.replaceAll(',', '')) ?? 0,
                               currentAmount: double.tryParse(currentController.text) ?? 0,
                               deadline: selectedDeadline,
                               context: ctx,
@@ -426,7 +440,7 @@ class _SavingsGoalsScreenState extends State<SavingsGoalsScreen> {
                       style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                     Text(
-                      'Rp. ${goal.currentAmount.toStringAsFixed(0)}',
+                      CurrencyFormatter.format(goal.currentAmount.toStringAsFixed(0)),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -443,7 +457,7 @@ class _SavingsGoalsScreenState extends State<SavingsGoalsScreen> {
                       style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                     Text(
-                      'Rp. ${goal.targetAmount.toStringAsFixed(0)}',
+                      CurrencyFormatter.format(goal.currentAmount.toInt()),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:financial_management_app/utils/currency_formatter.dart'; // ← ADD THIS LINE
 import '../models/savings_goal.dart';
 import '../services/ai_budgeting_service.dart';
-import 'savings_goal_screen.dart';
 
 class AIResultsScreen extends StatefulWidget {
   final AIBudgetingResult aiResult;
@@ -57,7 +57,6 @@ class _AIResultsScreenState extends State<AIResultsScreen> {
       _showErrorSnackBar('Failed to create goals: $e');
     }
   }
-
 
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -164,7 +163,7 @@ class _AIResultsScreenState extends State<AIResultsScreen> {
               Expanded(
                 child: _buildSummaryCard(
                   'Monthly Savings',
-                  'Rp. ${widget.aiResult.monthlySavingsPotential.toStringAsFixed(0)}',
+                  CurrencyFormatter.format(widget.aiResult.monthlySavingsPotential.toInt()),
                   Colors.green,
                   Icons.savings,
                 ),
@@ -263,7 +262,6 @@ class _AIResultsScreenState extends State<AIResultsScreen> {
             ],
           ),
           
-          
           const SizedBox(height: 16),
           
           // Goals List
@@ -346,7 +344,8 @@ class _AIResultsScreenState extends State<AIResultsScreen> {
                                color: Colors.green[600], size: 16),
                           const SizedBox(width: 4),
                           Text(
-                            'Rp. ${goal.targetAmount.toStringAsFixed(0)}',
+                            // CHANGED: Use currency formatter
+                            CurrencyFormatter.format(goal.targetAmount.toInt()),
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -390,14 +389,53 @@ class _AIResultsScreenState extends State<AIResultsScreen> {
   }
 
   Widget _buildActionButtons() {
+    final selectedCount = _selectedGoals.where((selected) => selected).length;
+    
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
+          // NEW: Show selection summary
+          if (selectedCount > 0) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.green[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.green[600], size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '$selectedCount goal${selectedCount > 1 ? 's' : ''} selected',
+                      style: TextStyle(
+                        color: Colors.green[700],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    // CHANGED: Calculate and format total target amount
+                    'Total: ${CurrencyFormatter.format(_calculateTotalSelectedAmount())}',
+                    style: TextStyle(
+                      color: Colors.green[700],
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: _isLoading ? null : _createSelectedGoals,
+              onPressed: _isLoading || selectedCount == 0 ? null : _createSelectedGoals,
               icon: _isLoading
                   ? const SizedBox(
                       width: 20,
@@ -408,11 +446,13 @@ class _AIResultsScreenState extends State<AIResultsScreen> {
               label: Text(
                 _isLoading 
                     ? 'Creating Goals...' 
-                      : 'Create Selected Goals',
+                    : selectedCount == 0
+                        ? 'Select Goals to Create'
+                        : 'Create $selectedCount Goal${selectedCount > 1 ? 's' : ''}',
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
+                backgroundColor: selectedCount > 0 ? Colors.green : Colors.grey,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -434,6 +474,16 @@ class _AIResultsScreenState extends State<AIResultsScreen> {
         ],
       ),
     );
+  }
+
+  int _calculateTotalSelectedAmount() {
+    double total = 0;
+    for (int i = 0; i < _selectedGoals.length; i++) {
+      if (_selectedGoals[i]) {
+        total += widget.aiResult.goals[i].targetAmount;
+      }
+    }
+    return total.toInt();
   }
 
   @override

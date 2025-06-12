@@ -2,7 +2,7 @@ import 'package:financial_management_app/models/expense.dart';
 import 'package:financial_management_app/models/expense_category.dart';
 import 'package:financial_management_app/widgets/expense_list.dart';
 import 'package:financial_management_app/services/transaction_service.dart';
-
+import 'package:financial_management_app/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 
 class AllExpenseList extends StatefulWidget {
@@ -75,7 +75,7 @@ class _AllExpenseListState extends State<AllExpenseList> {
                     children: snapshot.data!
                         .map((tx) => _buildTransactionItem(
                               tx.description,
-                              'Rp. ${tx.amount}',
+                              CurrencyFormatter.format(tx.amount),
                             ))
                         .toList(),
                   );
@@ -254,7 +254,7 @@ class _AllExpenseListState extends State<AllExpenseList> {
 
         return _buildCategoryCard(
           category.name,
-          'Rp. ${total.toStringAsFixed(0)}',
+          CurrencyFormatter.format(total.toStringAsFixed(0)),
           category.iconUrl,
         );
       }).toList(),

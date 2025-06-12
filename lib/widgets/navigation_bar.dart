@@ -16,6 +16,8 @@ class NavBar extends StatelessWidget{
     required String label,
     required int index,
     required bool isActive,
+    Color? iconColor,
+    Color? labelColor,
   }) {
     return GestureDetector(
       onTap: () => onTap(index),
@@ -32,7 +34,7 @@ class NavBar extends StatelessWidget{
           children: [
             Icon(
               isActive ? activeIcon : icon,
-              color: Colors.black,
+              color: iconColor ?? Colors.black,
               size: 20,
             ),
             if (isActive)
@@ -40,11 +42,11 @@ class NavBar extends StatelessWidget{
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: Colors.black,
+                    color: labelColor ?? Colors.black,
                   ),
                 ),
               ),
@@ -123,11 +125,13 @@ class NavBar extends StatelessWidget{
                 isActive: currentIndex == 3,
               ),
               _buildNavItem(
-                icon: Icons.person_outline,
-                activeIcon: Icons.person,
-                label: 'Profile',
+                icon: Icons.logout_outlined,
+                activeIcon: Icons.logout,
+                label: 'Logout',
                 index: 4,
                 isActive: currentIndex == 4,
+                iconColor: Colors.red[600],
+                labelColor: Colors.red[600],
               ),
             ],
           ),

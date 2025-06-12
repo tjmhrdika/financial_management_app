@@ -8,6 +8,7 @@ import '../models/expense_category.dart';
 import '../models/savings_goal.dart';
 import '../services/savings_goal_service.dart'; 
 import 'category_crud_dialog.dart';
+import 'package:financial_management_app/utils/currency_formatter.dart';
 
 class AddExpenseForm extends StatefulWidget {
   const AddExpenseForm({super.key});
@@ -30,19 +31,18 @@ class _AddExpenseFormState extends State<AddExpenseForm> {
 
   List<SavingsGoal> _savingsGoals = [];
   Map<String, double> _goalAllocations = {};
-  double _remainingAmount = 0;
+
+  
 
   @override
   void initState() {
     super.initState();
     _loadCategories();
     _loadSavingsGoals();
-    _amountController.addListener(_updateRemainingAmount);
   }
 
   @override
   void dispose() {
-    _amountController.removeListener(_updateRemainingAmount);
     super.dispose();
   }
 
@@ -78,13 +78,6 @@ class _AddExpenseFormState extends State<AddExpenseForm> {
     }
   }
 
-  void _updateRemainingAmount() {
-    final totalIncome = double.tryParse(_amountController.text) ?? 0;
-    final totalAllocated = _goalAllocations.values.fold(0.0, (sum, amount) => sum + amount);
-    setState(() {
-      _remainingAmount = totalIncome - totalAllocated;
-    });
-  }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -93,14 +86,19 @@ class _AddExpenseFormState extends State<AddExpenseForm> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    if (!_isExpense && _remainingAmount < 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Total allocations cannot exceed income amount'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
+    if (!_isExpense && _goalAllocations.isNotEmpty) {
+      final totalIncome = double.tryParse(_amountController.text) ?? 0;
+      final totalAllocated = _goalAllocations.values.fold(0.0, (sum, amount) => sum + amount);
+      
+      if (totalAllocated > totalIncome) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Total allocations cannot exceed income amount'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
     }
 
     try {
@@ -132,10 +130,10 @@ class _AddExpenseFormState extends State<AddExpenseForm> {
         _selectedDate = DateTime.now();
         _selectedCategoryId = null;
         _goalAllocations = {};
-        _remainingAmount = 0;
       });
 
       if (!_isExpense && _goalAllocations.isNotEmpty) {
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -246,15 +244,8 @@ class _AddExpenseFormState extends State<AddExpenseForm> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Total Income: Rp. ${_amountController.text.isEmpty ? "0" : _amountController.text}',
+                    'Total Income: ${_amountController.text.isEmpty ? "Rp. 0" : CurrencyFormatter.format(int.tryParse(_amountController.text) ?? 0)}',
                     style: const TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  Text(
-                    'Remaining: Rp. ${_remainingAmount.toStringAsFixed(0)}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: _remainingAmount < 0 ? Colors.red : Colors.green,
-                    ),
                   ),
                 ],
               ),
@@ -272,7 +263,12 @@ class _AddExpenseFormState extends State<AddExpenseForm> {
                       ),
                     ),
                     TextButton(
-                      onPressed: () => Navigator.pushNamed(context, '/savings-goals'),
+                      onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                        context, 
+                        '/home', 
+                        (route) => false,
+                        arguments: {'initialTab': 'budgeting'} 
+                      ),
                       child: const Text('Create Goal'),
                     ),
                   ],
@@ -284,7 +280,7 @@ class _AddExpenseFormState extends State<AddExpenseForm> {
     );
   }
 
-  Widget _buildGoalAllocationRow(SavingsGoal goal) {
+ Widget _buildGoalAllocationRow(SavingsGoal goal) {
     final controller = TextEditingController(
       text: _goalAllocations[goal.id]?.toString() ?? '',
     );
@@ -350,18 +346,50 @@ class _AddExpenseFormState extends State<AddExpenseForm> {
                   onChanged: (value) {
                     final amount = double.tryParse(value) ?? 0;
                     _goalAllocations[goal.id] = amount;
-                    _updateRemainingAmount();
+                    
+                    // Check if total exceeds income and show warning
+                    final totalIncome = double.tryParse(_amountController.text) ?? 0;
+                    final totalAllocated = _goalAllocations.values.fold(0.0, (sum, amount) => sum + amount);
+                    
+                    if (totalAllocated > totalIncome && totalIncome > 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              Icon(Icons.warning, color: Colors.white, size: 20),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Total allocations exceed income!',
+                                  style: TextStyle(fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ],
+                          ),
+                          backgroundColor: Colors.orange,
+                          behavior: SnackBarBehavior.floating,
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
+                    }
+                    
+                    // NO setState() here = smooth typing! ✅
                   },
                 ),
               ),
               const SizedBox(width: 8),
               ElevatedButton(
                 onPressed: () {
-                  final remaining = _remainingAmount + (_goalAllocations[goal.id] ?? 0);
+                  final totalIncome = double.tryParse(_amountController.text) ?? 0;
+                  final currentAllocation = _goalAllocations[goal.id] ?? 0;
+                  final otherAllocations = _goalAllocations.values
+                      .where((allocation) => allocation != currentAllocation)
+                      .fold(0.0, (sum, allocation) => sum + allocation);
+                  final remaining = totalIncome - otherAllocations;
+                  
                   if (remaining > 0) {
                     controller.text = remaining.toString();
                     _goalAllocations[goal.id] = remaining;
-                    _updateRemainingAmount();
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -379,6 +407,7 @@ class _AddExpenseFormState extends State<AddExpenseForm> {
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -402,7 +431,6 @@ class _AddExpenseFormState extends State<AddExpenseForm> {
                     setState(() {
                       _isExpense = true;
                       _goalAllocations = {};  
-                      _remainingAmount = 0;
                     });
                     _loadCategories();
                   },
@@ -482,7 +510,6 @@ class _AddExpenseFormState extends State<AddExpenseForm> {
                     setState(() {
                       _selectedCategoryId = null;
                       _goalAllocations = {};
-                      _remainingAmount = 0;
                     });
                   },
                   child: const Text('Cancel'),

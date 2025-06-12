@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../utils/currency_formatter.dart';
 
 class HomeDashboardScreen extends StatefulWidget {
   const HomeDashboardScreen({super.key});
@@ -155,7 +156,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             SizedBox(height: 24),
             Text("Available Balance", style: TextStyle(fontSize: 18)),
             Text(
-              "Rp${_balance.toStringAsFixed(2)}",
+              CurrencyFormatter.format(_balance.toInt()),
               style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 24),
