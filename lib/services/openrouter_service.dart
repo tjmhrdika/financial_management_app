@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 class OpenRouterService {
   static const String _baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
   // static const String _apiKey = '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'; 
-  static const String _apiKey = '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'; 
+  static const String _apiKey = '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'; 
   
   static const String _model = 'google/gemini-flash-1.5';
 

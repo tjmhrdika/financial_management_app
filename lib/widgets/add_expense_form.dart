@@ -50,7 +50,7 @@ class _AddExpenseFormState extends State<AddExpenseForm> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final collectionName = _isExpense ? 'expenseCategories' : 'incomesCategories';
+    final collectionName = _isExpense ? 'expenseCategories' : 'incomeCategories';
     final snapshot = await FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
