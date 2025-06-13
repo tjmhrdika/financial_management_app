@@ -213,7 +213,7 @@ class _ExpenseListState extends State<ExpenseList> {
       DateTime selectedDate,
       Map<String, double> goalAllocations,
     ) async {
-      final amount = int.tryParse(amountController.text);
+      final amount = int.tryParse(amountController.text.replaceAll(',', ''));
       if (descController.text.isEmpty || amount == null || amount < 0 || selectedCategoryId == null) {
         return;
       }
@@ -635,7 +635,7 @@ class _ExpenseListState extends State<ExpenseList> {
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             child: Text(
-                              '${amountPrefix}${transaction.date.day.toString().padLeft(2, '0')} '
+                              '${transaction.date.day.toString().padLeft(2, '0')} '
                               '${_monthName(transaction.date.month)} '
                               '${transaction.date.year}',
                               style: const TextStyle(
@@ -693,11 +693,12 @@ class _ExpenseListState extends State<ExpenseList> {
                                     );
                                     if (confirm == true) {
                                       final user = FirebaseAuth.instance.currentUser;
+                                      final collection = isIncome ? 'incomes' : 'expenses';
                                       if (user != null) {
                                         await FirebaseFirestore.instance
                                             .collection('users')
                                             .doc(user.uid)
-                                            .collection('expenses')
+                                            .collection(collection)
                                             .doc(transaction.id)
                                             .delete();
                                       }
