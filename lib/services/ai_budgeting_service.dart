@@ -35,7 +35,6 @@ class AIBudgetingService {
         throw Exception('AI service failed. Please try again.');
       }
 
-      // Convert AI response to goals
       final goals = _createGoalsFromAI(aiResponse);
       
       return AIBudgetingResult(
@@ -51,7 +50,6 @@ class AIBudgetingService {
 
   Future<void> createSelectedGoalsAndReplaceAll(List<SavingsGoal> selectedGoals) async {
     try {
-      // Delete old goals
       final oldGoals = await _savingsGoalService.fetchSavingsGoals();
       for (final goal in oldGoals) {
         await _savingsGoalService.deleteSavingsGoal(goal.id);
@@ -65,7 +63,6 @@ class AIBudgetingService {
     }
   }
 
-  // Get count of existing goals
   Future<int> getExistingGoalsCount() async {
     try {
       final goals = await _savingsGoalService.fetchSavingsGoals();
@@ -75,7 +72,6 @@ class AIBudgetingService {
     }
   }
 
-  // Convert AI response to SavingsGoal objects
   List<SavingsGoal> _createGoalsFromAI(Map<String, dynamic> aiResponse) {
     final goalsData = aiResponse['goals'] as List;
     List<SavingsGoal> goals = [];
@@ -86,12 +82,10 @@ class AIBudgetingService {
         final target = (goalData['target'] as num).toDouble();
         final deadlineStr = goalData['deadline'] as String;
         
-        // Simple date parsing
         DateTime deadline;
         try {
           deadline = DateTime.parse(deadlineStr);
         } catch (e) {
-          // If date is bad, use 1 year from now
           deadline = DateTime.now().add(Duration(days: 365));
         }
 
@@ -105,7 +99,6 @@ class AIBudgetingService {
           isCompleted: false,
         ));
       } catch (e) {
-        // Skip bad goals
         continue;
       }
     }
@@ -114,7 +107,6 @@ class AIBudgetingService {
   }
 }
 
-// Simple result class
 class AIBudgetingResult {
   final List<SavingsGoal> goals;
   final String summary;
@@ -128,7 +120,6 @@ class AIBudgetingResult {
     required this.monthlyExpenses,
   });
 
-  // Simple calculated properties
   double get monthlySavingsPotential => monthlyIncome - monthlyExpenses;
   double get savingsRate => monthlyIncome > 0 ? (monthlySavingsPotential / monthlyIncome) * 100 : 0;
   bool get hasPositiveSavings => monthlySavingsPotential > 0;

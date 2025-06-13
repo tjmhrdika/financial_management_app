@@ -6,7 +6,6 @@ class IncomeAllocationService {
   final firestore = FirebaseFirestore.instance;
   final auth = FirebaseAuth.instance;
 
-  // Get the collection for current user
   CollectionReference? getCollection() {
     final user = auth.currentUser;
     if (user == null) return null;
@@ -17,7 +16,6 @@ class IncomeAllocationService {
         .collection('incomeAllocations');
   }
 
-  // Save new allocations
   Future<void> saveAllocations(String incomeId, Map<String, double> allocations) async {
     final collection = getCollection();
     if (collection == null) return;
@@ -40,7 +38,6 @@ class IncomeAllocationService {
     }
   }
 
-  // Get allocations for one income
   Future<Map<String, double>> getIncomeAllocations(String incomeId) async {
     final collection = getCollection();
     if (collection == null) return {};
@@ -64,14 +61,29 @@ class IncomeAllocationService {
       return {};
     }
   }
+  
+  Future<void> deleteAllocationsByTargetId(String targetId) async {
+    final collection = getCollection();
+    if (collection == null) return;
 
-  // Update allocations (delete old ones and add new ones)
+    try {
+      final docs = await collection
+          .where('targetId', isEqualTo: targetId)
+          .get();
+
+      for (var doc in docs.docs) {
+        await doc.reference.delete();
+      }
+    } catch (e) {
+      print('Error deleting allocations by targetId: $e');
+    }
+  }
+
   Future<void> updateAllocations(String incomeId, Map<String, double> newAllocations) async {
     final collection = getCollection();
     if (collection == null) return;
 
     try {
-      // Delete old allocations first
       final oldDocs = await collection
           .where('incomeId', isEqualTo: incomeId)
           .get();
@@ -80,7 +92,6 @@ class IncomeAllocationService {
         await doc.reference.delete();
       }
 
-      // Add new allocations
       for (final entry in newAllocations.entries) {
         if (entry.value > 0) {
           final allocation = IncomeAllocation(
@@ -98,7 +109,6 @@ class IncomeAllocationService {
     }
   }
 
-  // Delete all allocations for one income
   Future<void> deleteIncomeAllocations(String incomeId) async {
     final collection = getCollection();
     if (collection == null) return;
@@ -116,7 +126,6 @@ class IncomeAllocationService {
     }
   }
 
-  // Get total allocated amount for one income
   Future<double> getTotalAllocated(String incomeId) async {
     final allocations = await getIncomeAllocations(incomeId);
     double total = 0;

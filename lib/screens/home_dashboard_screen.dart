@@ -48,7 +48,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       totalIncome += amount;
     }
 
-    // Fetch expenses
     final expenseSnapshot = await firestore
         .collection('users')
         .doc(user.uid)
@@ -92,7 +91,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             getTitlesWidget: (value, meta) {
               final index = value.toInt();
               if (index >= 0 && index < allDates.length) {
-                return Text(allDates[index].substring(5)); // show MM-dd
+                return Text(allDates[index].substring(5)); 
               }
               return const SizedBox.shrink();
             },
