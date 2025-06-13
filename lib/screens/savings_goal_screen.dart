@@ -3,6 +3,7 @@ import '../models/savings_goal.dart';
 import '../services/savings_goal_service.dart';
 import 'package:financial_management_app/screens/ai_budgeting_screen.dart'; 
 import '../utils/currency_formatter.dart';
+import '../services/income_allocation_service.dart';
 
 class SavingsGoalsScreen extends StatefulWidget {
   const SavingsGoalsScreen({super.key});
@@ -13,6 +14,7 @@ class SavingsGoalsScreen extends StatefulWidget {
 
 class _SavingsGoalsScreenState extends State<SavingsGoalsScreen> {
   final SavingsGoalService _savingsGoalService = SavingsGoalService();
+  final IncomeAllocationService _incomeAllocationService = IncomeAllocationService();
   List<SavingsGoal> _goals = [];
   bool _isLoading = true;
 
@@ -239,7 +241,6 @@ class _SavingsGoalsScreenState extends State<SavingsGoalsScreen> {
     required DateTime deadline,
     required BuildContext context,
   }) async {
-    // Validate input
     if (!_savingsGoalService.validateSavingsGoal(
       name: name,
       targetAmount: targetAmount,
@@ -300,6 +301,7 @@ class _SavingsGoalsScreenState extends State<SavingsGoalsScreen> {
     if (confirm == true) {
       try {
         await _savingsGoalService.deleteSavingsGoal(goal.id);
+        await _incomeAllocationService.deleteAllocationsByTargetId(goal.id);
         _showSuccessSnackBar('Savings goal deleted successfully!');
         await _loadGoals();
       } catch (e) {
@@ -550,7 +552,6 @@ class _SavingsGoalsScreenState extends State<SavingsGoalsScreen> {
             ),
             const SizedBox(height: 24),
             
-            // AI Option
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -601,7 +602,6 @@ class _SavingsGoalsScreenState extends State<SavingsGoalsScreen> {
               ),
             ),
             
-            // Manual Option
             const Text('OR', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             

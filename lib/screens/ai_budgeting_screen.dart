@@ -98,7 +98,6 @@ class _AIBudgetingScreenState extends State<AIBudgetingScreen> {
       return;
     }
 
-    // Show confirmation dialog if there are existing goals
     if (_existingGoalsCount > 0) {
       final confirmed = await _showReplacementConfirmationDialog();
       if (!confirmed) return;
@@ -253,8 +252,8 @@ class _AIBudgetingScreenState extends State<AIBudgetingScreen> {
             const SizedBox(height: 8),
             Container(
               constraints: const BoxConstraints(
-                minHeight: 120, // Minimum height for text area
-                maxHeight: 200, // Maximum height to prevent overflow
+                minHeight: 120, 
+                maxHeight: 200, 
               ),
               decoration: BoxDecoration(
                 color: Colors.grey[100],
@@ -262,8 +261,8 @@ class _AIBudgetingScreenState extends State<AIBudgetingScreen> {
               ),
               child: TextFormField(
                 controller: _goalsController,
-                maxLines: null, // Allow unlimited lines within constraints
-                textAlignVertical: TextAlignVertical.top, // Align text to top
+                maxLines: null,
+                textAlignVertical: TextAlignVertical.top, 
                 decoration: const InputDecoration(
                   hintText: 'e.g., I want to achieve financial freedom in 5 years, buy a house, save for retirement, and have an emergency fund...',
                   border: InputBorder.none,
@@ -299,7 +298,6 @@ class _AIBudgetingScreenState extends State<AIBudgetingScreen> {
                         return null;
                       },
                       onChanged: (value) {
-                        // Show real-time savings calculation
                         setState(() {});
                       },
                     ),
@@ -329,7 +327,6 @@ class _AIBudgetingScreenState extends State<AIBudgetingScreen> {
                         return null;
                       },
                       onChanged: (value) {
-                        // Show real-time savings calculation
                         setState(() {});
                       },
                     ),
@@ -372,7 +369,6 @@ class _AIBudgetingScreenState extends State<AIBudgetingScreen> {
 
     return Column(
       children: [
-        // Summary Card
         Container(
           margin: const EdgeInsets.all(16),
           padding: const EdgeInsets.all(16),
@@ -409,7 +405,6 @@ class _AIBudgetingScreenState extends State<AIBudgetingScreen> {
           ),
         ),
 
-        // Goals List
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(
@@ -428,7 +423,6 @@ class _AIBudgetingScreenState extends State<AIBudgetingScreen> {
                 ],
               ),
               
-              // Warning about existing goals
               if (_existingGoalsCount > 0) ...[
                 const SizedBox(height: 8),
                 Container(
@@ -556,8 +550,8 @@ class _AIBudgetingScreenState extends State<AIBudgetingScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(), // Better scroll physics
-          padding: const EdgeInsets.only(bottom: 32), // Add bottom padding
+          physics: const BouncingScrollPhysics(), 
+          padding: const EdgeInsets.only(bottom: 32),
           child: Column(
             children: [
               const SizedBox(height: 16),

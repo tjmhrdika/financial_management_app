@@ -116,7 +116,7 @@ class NavBar extends StatelessWidget{
                 index: 1,
                 isActive: currentIndex == 1,
               ),
-              const SizedBox(width: 56), // Reserve space for the Add button
+              const SizedBox(width: 56), 
               _buildNavItem(
                 icon: Icons.trending_up_outlined,
                 activeIcon: Icons.trending_up,

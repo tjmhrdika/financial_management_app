@@ -98,7 +98,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              // Title
               const Text(
                 'Sign Up',
                 style: TextStyle(

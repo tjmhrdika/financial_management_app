@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:financial_management_app/utils/currency_formatter.dart'; // ← ADD THIS LINE
+import 'package:financial_management_app/utils/currency_formatter.dart';
 import '../models/savings_goal.dart';
 import '../services/ai_budgeting_service.dart';
 
@@ -157,7 +157,6 @@ class _AIResultsScreenState extends State<AIResultsScreen> {
           
           const SizedBox(height: 20),
           
-          // Financial Summary
           Row(
             children: [
               Expanded(
@@ -264,7 +263,6 @@ class _AIResultsScreenState extends State<AIResultsScreen> {
           
           const SizedBox(height: 16),
           
-          // Goals List
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -308,7 +306,6 @@ class _AIResultsScreenState extends State<AIResultsScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Checkbox
                 Container(
                   width: 24,
                   height: 24,
@@ -344,7 +341,6 @@ class _AIResultsScreenState extends State<AIResultsScreen> {
                                color: Colors.green[600], size: 16),
                           const SizedBox(width: 4),
                           Text(
-                            // CHANGED: Use currency formatter
                             CurrencyFormatter.format(goal.targetAmount.toInt()),
                             style: TextStyle(
                               fontSize: 14,
@@ -395,7 +391,6 @@ class _AIResultsScreenState extends State<AIResultsScreen> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // NEW: Show selection summary
           if (selectedCount > 0) ...[
             Container(
               padding: const EdgeInsets.all(12),
@@ -419,7 +414,6 @@ class _AIResultsScreenState extends State<AIResultsScreen> {
                     ),
                   ),
                   Text(
-                    // CHANGED: Calculate and format total target amount
                     'Total: ${CurrencyFormatter.format(_calculateTotalSelectedAmount())}',
                     style: TextStyle(
                       color: Colors.green[700],

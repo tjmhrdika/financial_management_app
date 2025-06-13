@@ -347,7 +347,6 @@ class _AddExpenseFormState extends State<AddExpenseForm> {
                     final amount = double.tryParse(value) ?? 0;
                     _goalAllocations[goal.id] = amount;
                     
-                    // Check if total exceeds income and show warning
                     final totalIncome = double.tryParse(_amountController.text) ?? 0;
                     final totalAllocated = _goalAllocations.values.fold(0.0, (sum, amount) => sum + amount);
                     
@@ -373,7 +372,6 @@ class _AddExpenseFormState extends State<AddExpenseForm> {
                       );
                     }
                     
-                    // NO setState() here = smooth typing! ✅
                   },
                 ),
               ),

@@ -280,7 +280,6 @@ class _ExpenseListState extends State<ExpenseList> {
             height: MediaQuery.of(context).size.height * 0.85,
             child: Column(
               children: [
-                // Header
                 Container(
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -305,7 +304,6 @@ class _ExpenseListState extends State<ExpenseList> {
                   ),
                 ),
                 
-                // Scrollable content
                 Expanded(
                   child: FutureBuilder(
                     future: loadDialogData(user!, isIncome, expense.id),
@@ -328,7 +326,6 @@ class _ExpenseListState extends State<ExpenseList> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Basic fields
                             TextField(
                               controller: descController,
                               decoration: InputDecoration(
@@ -345,19 +342,6 @@ class _ExpenseListState extends State<ExpenseList> {
                                 labelText: 'Amount (Rp)',
                                 border: OutlineInputBorder(),
                               ),
-                              onChanged: (value) {
-                                final cleanValue = value.replaceAll(',', '');
-                                final amount = int.tryParse(cleanValue);
-                                if (amount != null && amount > 0) {
-                                  final formatted = CurrencyFormatter.formatNumber(amount);
-                                  if (amountController.text != formatted) {
-                                    amountController.text = formatted;
-                                    amountController.selection = TextSelection.fromPosition(
-                                      TextPosition(offset: amountController.text.length),
-                                    );
-                                  }
-                                }
-                              },
                             ),
                             SizedBox(height: 16),
                             
@@ -377,7 +361,6 @@ class _ExpenseListState extends State<ExpenseList> {
                             ),
                             SizedBox(height: 16),
                             
-                            // Date picker
                             InkWell(
                               onTap: () async {
                                 final picked = await showDatePicker(
@@ -652,7 +635,7 @@ class _ExpenseListState extends State<ExpenseList> {
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             child: Text(
-                              '${transaction.date.day.toString().padLeft(2, '0')} '
+                              '${amountPrefix}${transaction.date.day.toString().padLeft(2, '0')} '
                               '${_monthName(transaction.date.month)} '
                               '${transaction.date.year}',
                               style: const TextStyle(
