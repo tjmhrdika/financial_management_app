@@ -170,12 +170,13 @@ class _CategoryCrudDialogState extends State<CategoryCrudDialog> {
   Future<void> _deleteCategory(ExpenseCategory category) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
+    String collection = _isExpenseTab ? 'expenses' : 'incomes';
     
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Category'),
-        content: Text('Are you sure you want to delete "${category.name}"?'),
+        content: Text('Are you sure you want to delete "${category.name}"? Deleting this category will also delete all related $collection. Continue?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -190,14 +191,23 @@ class _CategoryCrudDialogState extends State<CategoryCrudDialog> {
     );
     
     if (confirm == true) {
-      String collection = _isExpenseTab ? 'expenseCategories' : 'incomeCategories';
-      await FirebaseFirestore.instance
+      String categoryCollection = _isExpenseTab ? 'expenseCategories' : 'incomeCategories';
+      final db = FirebaseFirestore.instance;
+      final catRef = db
+          .collection('users')
+          .doc(user.uid)
+          .collection(categoryCollection)
+          .doc(category.id);
+      final expenseSnap = await db
           .collection('users')
           .doc(user.uid)
           .collection(collection)
-          .doc(category.id)
-          .delete();
-          
+          .where('categoryId', isEqualTo: category.id)
+          .get();
+      for (var doc in expenseSnap.docs) {
+        await doc.reference.delete();
+      }
+      await catRef.delete();
       await _loadCategories();
       widget.onUpdate();
     }
