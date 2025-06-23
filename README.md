@@ -21,5 +21,3 @@
 ![ai budgeting.png](assets%2Freadme%2Fai%20budgeting.png)
 
 ![budgeting.png](assets%2Freadme%2Fbudgeting.png)
-
-![transactions.png](assets%2Freadme%2Ftransactions.png)
