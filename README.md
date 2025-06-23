@@ -1,16 +1,25 @@
 # financial_management_app
 
-A new Flutter project.
+## Poster
 
-## Getting Started
+![poster.gif](assets%2Freadme%2Fposter.gif)
 
-This project is a starting point for a Flutter application.
+## Activity Diagram
 
-A few resources to get you started if this is your first Flutter project:
+![activity diagram.png](assets%2Freadme%2Factivity%20diagram.png)
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Screenshots
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+![home.png](assets%2Freadme%2Fhome.png)
+
+![transactions.png](assets%2Freadme%2Ftransactions.png)
+
+![transaction list.png](assets%2Freadme%2Ftransaction%20list.png)
+
+![add transaction.png](assets%2Freadme%2Fadd%20transaction.png)
+
+![ai budgeting.png](assets%2Freadme%2Fai%20budgeting.png)
+
+![budgeting.png](assets%2Freadme%2Fbudgeting.png)
+
+![transactions.png](assets%2Freadme%2Ftransactions.png)
