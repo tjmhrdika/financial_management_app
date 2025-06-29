@@ -17,7 +17,7 @@
 
 ---
 
-## Contribution Highlights
+## Contributions
 
 ### Thomas Juan
 - Developed full CRUD functionality for expense tracking  
