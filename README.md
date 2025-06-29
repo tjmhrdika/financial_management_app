@@ -1,5 +1,21 @@
 # financial_management_app
 
+## Member
+1. Thomas Juan 5025211016
+2. Andrian 5025211079
+
+## Contribution
+Thomas Juan
+- Building CRUD for expenses
+- Building Launching App View
+
+Andrian
+- Create UI/UX design
+- Handle most of the front-end side
+- Building CRUD for Income
+- Integrating LLM in app for financial Budgeting
+
+
 ## Poster
 
 ![poster.gif](assets%2Freadme%2Fposter.gif)
